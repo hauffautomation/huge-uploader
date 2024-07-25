@@ -34,7 +34,7 @@ class HugeUploader {
 
             this.offline = false;
             this._eventTarget.dispatchEvent(new Event('online'));
-            
+
             // if upload already is finished do not call _sendChucks
             if (this.chunkCount < this.totalChunks) {
                 this._sendChunks();
@@ -130,16 +130,29 @@ class HugeUploader {
         .then(() => this._sendChunk())
         .then((res) => {
             if (res.status === 200 || res.status === 201 || res.status === 204) {
-                if (++this.chunkCount < this.totalChunks) this._sendChunks();
-                else {
-                  res.text().then(body => {
-                    this._eventTarget.dispatchEvent(new CustomEvent('finish', { detail: body }));
-                  })
+                
+                if (++this.chunkCount < this.totalChunks) {
+                    this._sendChunks();
+                } else if (res.status === 200) {
+                    // Fetch the JSON response when the upload is finished
+                    return res
+                    .json()
+                    .then((jsonResponse) => {
+                        this._eventTarget.dispatchEvent(new CustomEvent('finish', { detail: jsonResponse }));
+                    })
+                    .catch((err) => {
+                        console.log('Fetch JSON response', err, res.status);
+                    })
+                    .finally(() => {
+                        const percentProgress = Math.round((100 / this.totalChunks) * this.chunkCount);
+                        this._eventTarget.dispatchEvent(new CustomEvent('progress', { detail: percentProgress }));
+                    });
                 }
 
+                // Progress event dispatch for intermediate chunks
                 const percentProgress = Math.round((100 / this.totalChunks) * this.chunkCount);
                 this._eventTarget.dispatchEvent(new CustomEvent('progress', { detail: percentProgress }));
-            }
+                }
 
             // errors that might be temporary, wait a bit then retry
             else if ([408, 502, 503, 504].includes(res.status)) {
