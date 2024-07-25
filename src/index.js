@@ -34,7 +34,11 @@ class HugeUploader {
 
             this.offline = false;
             this._eventTarget.dispatchEvent(new Event('online'));
-            this._sendChunks();
+            
+            // if upload already is finished do not call _sendChucks
+            if (this.chunkCount < this.totalChunks) {
+                this._sendChunks();
+            }
         });
 
         window.addEventListener('offline', () => {
