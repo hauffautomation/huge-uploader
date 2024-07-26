@@ -158,8 +158,14 @@ class HugeUploader {
             else if ([408, 502, 503, 504].includes(res.status)) {
                 if (this.paused || this.offline) return;
                 this._manageRetries();
+            } else if ([413].includes(res.status)) {
+                return res.text().then(responseText => {
+                  this._eventTarget.dispatchEvent(
+                    new CustomEvent('filesize', {
+                      detail: `${responseText}`,
+                    }))
+                })
             }
-
             else {
                 if (this.paused || this.offline) return;
                 this._eventTarget.dispatchEvent(new CustomEvent('error', { detail: res }));
