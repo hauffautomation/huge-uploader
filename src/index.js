@@ -20,6 +20,7 @@ class HugeUploader {
 
         this.headers['uploader-file-id'] = this._uniqid(this.file);
         this.headers['uploader-chunks-total'] = this.totalChunks;
+        this.headers['client-id'] = this.clientId;
 
         this._reader = new FileReader();
         this._eventTarget = new EventTarget();
@@ -35,7 +36,7 @@ class HugeUploader {
             this.offline = false;
             this._eventTarget.dispatchEvent(new Event('online'));
 
-            // if upload already is finished do not call _sendChucks
+            // if upload is already is finished do not call _sendChucks
             if (this.chunkCount < this.totalChunks) {
                 this._sendChunks();
             }
@@ -168,15 +169,19 @@ class HugeUploader {
             }
             else {
                 if (this.paused || this.offline) return;
-                this._eventTarget.dispatchEvent(new CustomEvent('error', { detail: res }));
-            }
-        })
-        .catch((err) => {
-            if (this.paused || this.offline) return;
-
-            // this type of error can happen after network disconnection on CORS setup
-            this._manageRetries();
-        });
+                this._eventTarget.dispatchEvent(
+                  new CustomEvent('error', {
+                    detail: `Server responded with ${res.status}. Stopping upload | chuck: ${this.chunk} | chuckCount: ${this.chunkCount} | totalChunks: ${this.totalChunks}`,
+                  })
+                );
+              }
+            })
+            .catch(() => {
+              if (this.paused || this.offline) return;
+      
+              // this type of error can happen after network disconnection on CORS setup
+              this._manageRetries();
+            });
     }
 
     togglePause() {
